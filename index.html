@@ -95,6 +95,7 @@
 
             } catch (e) {
                 console.error("Decryption failed:", e);
+                document.getElementById('audio-wrong').play();
                 errorMessage.textContent = "Invalid password.";
                 passwordInput.value = ""; // Clear the input
             }
