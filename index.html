@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact List</title>
+    <title>Protected Contact List</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CryptoJS Library for AES encryption/decryption -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* Custom styles can be added here if needed */
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Style for the clickable contact card */
         .contact-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
@@ -25,100 +23,117 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen">
 
-    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+    <!-- Password Prompt Container -->
+    <div id="password-container" class="w-full max-w-sm p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-4">Enter Password</h2>
+        <p class="text-center text-gray-600 dark:text-gray-400 mb-6">Enter the password to decrypt and view your contacts.</p>
+        <input type="password" id="password-input" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600" placeholder="Password">
+        <button id="decrypt-button" class="w-full mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">
+            Unlock Contacts
+        </button>
+        <p id="error-message" class="text-red-500 text-center mt-4 h-4"></p>
+    </div>
+
+    <!-- Contact List Container (hidden by default) -->
+    <div id="contact-container" class="container mx-auto p-4 sm:p-6 lg:p-8 hidden">
         <header class="text-center mb-8">
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white">My Contacts</h1>
             <p class="text-gray-600 dark:text-gray-400 mt-2">Click on a contact to place a call.</p>
         </header>
-
-        <!-- Container for the contact list -->
         <main id="contactList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Contact cards will be dynamically inserted here by JavaScript -->
+            <!-- Contact cards will be dynamically inserted here -->
         </main>
-
     </div>
 
     <script>
-        // --- CONTACT DATA ---
-        // You can easily add, remove, or edit contacts here.
-        const contacts = [
-            {
-                firstName: "John",
-                lastName: "Doe",
-                number: "+11234567890"
-            },
-            {
-                firstName: "Jane",
-                lastName: "Smith",
-                number: "+19876543210"
-            },
-            {
-                firstName: "Peter",
-                lastName: "Jones",
-                number: "+15551234567"
-            },
-            {
-                firstName: "Mary",
-                lastName: "Williams",
-                number: "+15557654321"
-            },
-            {
-                firstName: "David",
-                lastName: "Brown",
-                number: "+14445556666"
-            },
-            {
-                firstName: "Sarah",
-                lastName: "Miller",
-                number: "+12223334444"
-            }
-        ];
+        // --- ENCRYPTED CONTACT DATA ---
+        // This long string is your contact list, encrypted.
+        // Replace this with the output from the encrypt-tool.html
+        const encryptedContacts = "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";
 
-        // --- SCRIPT TO RENDER CONTACTS ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const contactListContainer = document.getElementById('contactList');
+        // --- DOM ELEMENTS ---
+        const passwordContainer = document.getElementById('password-container');
+        const contactContainer = document.getElementById('contact-container');
+        const passwordInput = document.getElementById('password-input');
+        const decryptButton = document.getElementById('decrypt-button');
+        const errorMessage = document.getElementById('error-message');
+        const contactListContainer = document.getElementById('contactList');
 
-            if (!contactListContainer) {
-                console.error("Contact list container not found!");
+        // --- DECRYPTION AND RENDERING LOGIC ---
+        function decryptAndShowContacts() {
+            const password = passwordInput.value;
+            if (!password) {
+                errorMessage.textContent = "Please enter a password.";
                 return;
             }
 
-            // Check if there are any contacts
+            try {
+                // Decrypt the data using the provided password
+                const decryptedBytes = CryptoJS.AES.decrypt(encryptedContacts, password);
+                const decryptedJson = decryptedBytes.toString(CryptoJS.enc.Utf8);
+
+                // If the decrypted string is empty, the password was wrong
+                if (!decryptedJson) {
+                    throw new Error("Invalid password or corrupted data.");
+                }
+
+                const contacts = JSON.parse(decryptedJson);
+                
+                // Hide password form and show contacts
+                passwordContainer.classList.add('hidden');
+                contactContainer.classList.remove('hidden');
+                
+                renderContacts(contacts);
+
+            } catch (e) {
+                console.error("Decryption failed:", e);
+                errorMessage.textContent = "Invalid password.";
+                passwordInput.value = ""; // Clear the input
+            }
+        }
+
+        function renderContacts(contacts) {
+            // Clear any previous content
+            contactListContainer.innerHTML = '';
+
             if (contacts.length === 0) {
                 contactListContainer.innerHTML = '<p class="text-center col-span-full text-gray-500">No contacts to display.</p>';
                 return;
             }
 
-            // Loop through each contact and create an HTML element for it
             contacts.forEach(contact => {
-                // Create the main anchor tag which makes the whole card clickable
                 const cardLink = document.createElement('a');
-                // The 'tel:' URI scheme prompts the device to initiate a call
                 cardLink.href = `tel:${contact.number}`;
                 cardLink.className = 'contact-card block bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md cursor-pointer';
                 cardLink.setAttribute('aria-label', `Call ${contact.firstName} ${contact.lastName}`);
 
-                // Create the name element
                 const nameElement = document.createElement('div');
                 nameElement.className = 'text-xl font-semibold text-indigo-600 dark:text-indigo-400';
                 nameElement.innerHTML = `${contact.firstName}<br>${contact.lastName}`;
 
-                // Create the number element
                 const numberElement = document.createElement('div');
                 numberElement.className = 'text-lg text-gray-700 dark:text-gray-300 mt-2 font-mono';
                 numberElement.textContent = contact.number;
 
-                // Append name and number to the card
                 cardLink.appendChild(nameElement);
                 cardLink.appendChild(numberElement);
-
-                // Append the card to the main container
                 contactListContainer.appendChild(cardLink);
             });
+        }
+
+        // --- EVENT LISTENERS ---
+        decryptButton.addEventListener('click', decryptAndShowContacts);
+        // Allow pressing Enter to submit
+        passwordInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                decryptAndShowContacts();
+            }
         });
+
     </script>
 
 </body>
 </html>
+
